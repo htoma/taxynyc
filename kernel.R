@@ -68,3 +68,31 @@ january %>%
 january %>%
   ggplot(aes(pickup_datetime)) + 
   geom_histogram(fill = "red", bins = 100)
+
+# passenger count
+january %>%
+  group_by(passenger_count) %>%
+  count() %>%
+  ggplot(aes(passenger_count, n, fill = passenger_count)) +
+  geom_col() +
+  theme(legend.position = "none")
+
+# pickups per day of the week
+january %>%
+  mutate(wday = wday(pickup_datetime, label = TRUE))  %>%
+  group_by(wday) %>%
+  count() %>%
+  ggplot(aes(wday, n, colour = wday)) +
+  geom_point(size = 4) +
+  labs(x = "Day of the week", y = "Total number of pickups") +
+  theme(legend.position = "none")
+  
+# pickups per hour of the day
+january %>%
+  mutate(hpick = hour(pickup_datetime))  %>%
+  group_by(hpick) %>%
+  count() %>%
+  ggplot(aes(hpick, n)) +
+  geom_col() +
+  labs(x = "Hour of the day", y = "Total number of pickups") +
+  theme(legend.position = "none")
