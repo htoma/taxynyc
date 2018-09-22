@@ -4,6 +4,9 @@ install.packages("ggmap")
 install.packages("VIM")
 install.packages("lubridate")
 install.packages("leaflet")
+install.packages("forcats")
+install.packages("lattice")
+install.packages("Rmisc")
 
 library(ggplot2)
 library(ggmap)
@@ -17,6 +20,8 @@ library(tibble)
 library(dplyr)
 library(geosphere)
 library(forcats)
+library(lattice)
+library(Rmisc)
 
 taxis <- as.tibble(fread('c:/data/nyctaxi/train.csv'))
 
@@ -147,7 +152,7 @@ january %>%
   labs(x = "Average speed [km/h]")
 
 # speed by time of the day and day of the week
-p1 <- january %>%
+january %>%
         filter(speed > 2 & speed < 1e2) %>%
         group_by(wday) %>%
         summarise(median_speed = median(speed)) %>%
@@ -155,7 +160,7 @@ p1 <- january %>%
         geom_point(size = 4) +
         labs(x = "Day of the week", y = "Median speed [km/h]")
 
-p2 <- january %>%
+january %>%
         filter(speed > 2 & speed < 1e2) %>%
         group_by(hour) %>%
         summarise(median_speed = median(speed)) %>%
@@ -172,3 +177,65 @@ january %>%
   geom_tile() +  
   labs(x = "Hour of the day", y = "Day of the week") +
   scale_fill_distiller(palette = "Spectral")
+
+# airport distance
+plot_jfk_pickup_dist <- january %>%
+        ggplot(aes(jfk_dist_pickup)) +
+        geom_histogram(bins = 30, fill = "red") +
+        scale_x_log10() +
+        scale_y_sqrt() +
+        labs(x = "JFK pickup distance")
+
+plot_jfk_dropoff_dist <- january %>%
+        ggplot(aes(jfk_dist_dropoff)) +
+        geom_histogram(bins = 30, fill = "blue") +
+        scale_x_log10() +
+        scale_y_sqrt() +
+        labs(x = "JFK dropoff distance")
+
+plot_guardia_pickup_dist <- january %>%
+  ggplot(aes(lg_dist_pickup)) +
+  geom_histogram(bins = 30, fill = "red") +
+  scale_x_log10() +
+  scale_y_sqrt() +
+  labs(x = "La Guardia pickup distance")
+
+plot_guardia_dropoff_dist <- january %>%
+  ggplot(aes(lg_dist_dropoff)) +
+  geom_histogram(bins = 30, fill = "blue") +
+  scale_x_log10() +
+  scale_y_sqrt() +
+  labs(x = "La Guardia dropoff distance")
+
+layout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = FALSE)
+multiplot(plot_jfk_pickup_dist, plot_jfk_dropoff_dist, plot_guardia_pickup_dist, plot_guardia_dropoff_dist, layout = layout)
+
+# duration of trips to/from the airports
+p1 <- january %>%
+        filter(trip_duration < 23 * 3600) %>%
+        ggplot(aes(jfk_trip, trip_duration, color = jfk_trip)) +
+        geom_boxplot() + 
+        scale_y_log10() + 
+        labs(x = "JFK trips")
+
+p2 <- january %>%
+  filter(trip_duration < 23 * 3600) %>%
+  ggplot(aes(lg_trip, trip_duration, color = lg_trip)) +
+  geom_boxplot() + 
+  scale_y_log10() + 
+  labs(x = "La Guardia trips")
+
+layout <- matrix(c(1, 2), 1, 2, byrow = FALSE)
+multiplot(p1, p2, layout = layout)
+
+# trips longer than a day
+day_plus_trips <- january %>%
+                    filter(trip_duration > 23 * 3600)
+day_plus_trips %>% select(pickup_datetime, dropoff_datetime, speed, pickup_longitude, pickup_latitude, distance)
+day_plus_coord <- day_plus_trips %>% select(lon = pickup_longitude, lat = pickup_latitude)
+
+leaflet(day_plus_coord) %>%
+  addTiles() %>%
+  setView(-92.00, 41.0, zoom = 4) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addMarkers(popup = ~as.character(day_plus_trips$distance))
