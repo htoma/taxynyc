@@ -239,3 +239,56 @@ leaflet(day_plus_coord) %>%
   setView(-92.00, 41.0, zoom = 4) %>%
   addProviderTiles("CartoDB.Positron") %>%
   addMarkers(popup = ~as.character(day_plus_trips$distance))
+
+# weather
+weather <- as.tibble(fread('c:/data/nyctaxi/weather.csv'))
+glimpse(weather)
+
+weather <- weather %>%
+            mutate(date = dmy(date),
+                   rain = as.numeric(ifelse(precipitation == 'T', '0.01', precipitation)),
+                   snow_fall = as.numeric(ifelse(`snow fall` == 'T', '0.01', `snow fall`)),
+                   snow_depth = as.numeric(ifelse(`snow depth` == 'T', '0.01', `snow depth`)),
+                   all_precip = rain + snow_fall,
+                   has_snow = (snow_fall > 0) | (snow_depth > 0),
+                   has_rain = rain > 0,
+                   max_temp = `maximum temperature`,
+                   min_temp = `minimum temperature`
+                   )
+joiner <- weather %>%
+          select(date, rain, snow_fall, all_precip, has_snow, has_rain, snow_depth, max_temp, min_temp)
+
+p1 <- january %>%
+        group_by(date) %>%
+        summarise(trips = n(),
+                  snow_fall = mean(snow_fall)) %>%
+        ggplot(aes(date, snow_fall)) +
+        geom_line(color = "blue", size = 1.5) +
+        labs(y = "Snow fall")
+  
+p2 <- january %>%
+  group_by(date) %>%
+  summarise(trips = n(),
+            snow_depth = mean(snow_depth)) %>%
+  ggplot(aes(date, snow_depth)) +
+  geom_line(color = "purple", size = 1.5) +
+  labs(y = "Snow depth")
+
+p3 <- january %>%
+  group_by(date) %>%
+  summarise(trips = n(),
+            rain = mean(rain)) %>%
+  ggplot(aes(date, rain)) +
+  geom_line(color = "orange", size = 1.5) +
+  labs(y = "Rain")
+
+p4 <- january %>%
+  group_by(date) %>%
+  summarise(trips = n(),
+            median_speed = mean(speed)) %>%
+  ggplot(aes(date, median_speed)) +
+  geom_line(color = "red", size = 1.5) +
+  labs(y = "Speed")
+
+layout <- matrix(c(1, 2, 3, 4), 4, 1, byrow = "FALSE")
+multiplot(p1, p2, p3, p4, layout = layout)
